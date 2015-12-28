@@ -1,0 +1,28 @@
+{
+  "name": "taskmanager",
+  "description": "",
+  "main": "index.js",
+  "license": "ISC",
+  "moduleType": [
+    "amd",
+    "node"
+  ],
+  "homepage": "",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "backbone-forms": "~0.14.0",
+    "jquery": "~2.1.4",
+    "backbone": "~1.2.3",
+    "underscore": "~1.8.3",
+    "requirejs": "~2.1.22",
+    "text": "requirejs-text#~2.0.14",
+    "bootstrap": "~3.3.6",
+    "font-awesome": "fontawesome#~4.5.0"
+  }
+}
