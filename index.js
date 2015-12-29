@@ -93,13 +93,13 @@ apiRouter.post('/login', function(req, res){
         res.json({success: false, errorMessage: 'Authentication failed. Wrong password.'});        
       } else {
 
-        var tokenBody = new Buffer(user.username + '.' + user.password + '.' + app.get('tokenSecret')).toString('base64');
+        var tokenBody = new Buffer(user.username + user.password + '.' + new Date().getTime() + '.' + app.get('tokenSecret')).toString('base64');
 
         console.log(tokenBody);
         
         var token = new Models.Token({
           body: tokenBody,
-          expire: new Date().getTime() / 1000 + 60*2 // in seconds, 2m
+          expire: new Date().getTime() / 1000 + 40 // in seconds, 2m
         })
 
         token.save(function(err, token){
@@ -118,40 +118,41 @@ apiRouter.post('/login', function(req, res){
   })  
 
 })
-/*
-apiRoutes.use(function(req, res, next) {
 
-  // check header or url parameters or post parameters for token
-  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+// apiRoutes.use(function(req, res, next) {
 
-  // decode token
-  if (token) {
+//   // check header or url parameters or post parameters for token
+//   var token = req.body.token || req.query.token || req.headers['x-access-token'];
 
-    // verifies secret and checks exp
-    jwt.verify(token, app.get('superSecret'), function(err, decoded) {      
-      if (err) {
-        return res.json({ success: false, message: 'Failed to authenticate token.' });    
-      } else {
-        // if everything is good, save to request for use in other routes
-        req.decoded = decoded;    
-        next();
-      }
-    });
+//   // decode token
+//   if (token) {
 
-  } else {
+//     // verifies secret and checks exp
+//     jwt.verify(token, app.get('superSecret'), function(err, decoded) {      
+//       if (err) {
+//         return res.json({ success: false, message: 'Failed to authenticate token.' });    
+//       } else {
+//         // if everything is good, save to request for use in other routes
+//         req.decoded = decoded;    
+//         next();
+//       }
+//     });
 
-    // if there is no token
-    // return an error
-    return res.status(403).send({ 
-      success: false, 
-      message: 'No token provided.' 
-    });
+//   } else {
+
+//     // if there is no token
+//     // return an error
+//     return res.status(403).send({ 
+//       success: false, 
+//       message: 'No token provided.' 
+//     });
     
-  }
-});
-*/
+//   }
+// });
+
 
 apiRouter.get('/verifyToken', function(req, res) {
+
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
 
   if (token){
@@ -159,18 +160,24 @@ apiRouter.get('/verifyToken', function(req, res) {
     Models.Token.findOne({body: token}, function(err, t){
       if (err) throw err;
 
-      if (t.expire < new Date().getTime() / 1000){
-        res.json({success: false, errorMessage: 'Token expired. Need authorization.'})
-      } else {
-
-        var decoded = new Buffer(t.body, 'base64').toString('utf-8');
-
-        if (decoded.split('.')[2] === app.get('tokenSecret')){
-          res.json({success: true});
+      if (t){
+        if (t.expire < new Date().getTime() / 1000){
+          res.json({success: false, errorMessage: 'Token expired. Need authorization.'})
         } else {
-          res.json({success: false, errorMessage: 'Invalid token provided.'})
+
+          var decoded = new Buffer(t.body, 'base64').toString('utf-8');
+
+          if (decoded.split('.')[2] === app.get('tokenSecret')){
+            res.json({success: true});
+          } else {
+            res.json({success: false, errorMessage: 'Invalid token provided.'})
+          }
         }
-      }      
+      } else {
+        res.json({success: false, errorMessage: 'Invalid token provided.'})
+      }
+
+      
     });
 
   } else {
