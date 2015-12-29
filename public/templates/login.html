@@ -1,12 +1,17 @@
 <h1>Login</h1>
 
-<div class="form-group">
-	<input type="text" name="username" placeholder="Username" class="form-control">
-</div>
-<div class="form-group">
-	<input type="password" name="password" placeholder="Password" class="form-control">
-</div>
+<form>
 
+	<div class="form-group" data-group="username">
+		<input type="text" name="username" placeholder="Username" class="form-control" data-field="username">
+		<div data-error="username" class="help-block hidden"></div>
+	</div>
 
-<button class="btn btn-success" type="button"><b>Sign in</b></button>
+	<div class="form-group" data-group="password">
+		<input type="password" name="password" placeholder="Password" class="form-control" data-field="password">
+		<div data-error="password" class="help-block hidden"></div>
+	</div>
 
+	<button class="btn btn-success" type="submit"><b>Sign in</b></button>
+
+</form>

@@ -16,12 +16,13 @@ app.use(bodyParser.json());
 
 app.use(morgan('dev'));
 
-app.set('superSecret', '7Kilveak6G');
+app.set('tokenSecret', '7Kilveak6G');
 
 
 // database settings
 
 var mongoose    = require('mongoose');
+var Models = require('./utils/Models').Models;
 
 mongoose.connect('mongodb://localhost:27017/taskManager');
 
@@ -32,15 +33,6 @@ db.once('open', function() {
   console.log('db works');
 });
 
-var userSchema = mongoose.Schema({
-  username: String,
-  password: String,
-  nickname: String
-}, {
-	collection: "user"
-});
-
-var User = mongoose.model('user', userSchema);
 
 
 // routes 
@@ -49,7 +41,7 @@ var apiRouter = express.Router();
 
 apiRouter.post('/register', function(req, res){
 
-  User.find({username: req.body.username}, function(err, result){
+  Models.User.find({username: req.body.username}, function(err, result){
 
     console.log(err, result);
     
@@ -65,7 +57,7 @@ apiRouter.post('/register', function(req, res){
 
       console.log('dont have this user');
 
-      var newUser = new User();
+      var newUser = new Models.User();
 
       newUser.username = req.body.username;
       newUser.password = req.body.password;
@@ -87,49 +79,104 @@ apiRouter.post('/register', function(req, res){
 
 apiRouter.post('/login', function(req, res){
 
-  User.findOne({username: req.body.username}, function(err, user){
+  console.log(req.body.username)
+
+  Models.User.findOne({username: req.body.username}, function(err, user){
 
     if (err) throw err;
 
-    console.log('1');
-    
     if (!user){
-      console.log('2');
       res.json({success: false, errorMessage: 'Authentication failed. User not found.'});
     } else if (user) {
-      console.log('3');
-
+      
       if (user.password != req.body.password){
         res.json({success: false, errorMessage: 'Authentication failed. Wrong password.'});        
       } else {
 
-        console.log('4');
+        var tokenBody = new Buffer(user.username + '.' + user.password + '.' + app.get('tokenSecret')).toString('base64');
 
-        var token = jwt.sign({
-          userId: user.id
-        }, app.get('superSecret'), {
-          expires: 60*60*24 // in seconds, 24h
-        });
+        console.log(tokenBody);
+        
+        var token = new Models.Token({
+          body: tokenBody,
+          expire: new Date().getTime() / 1000 + 60*2 // in seconds, 2m
+        })
 
-        res.json({
-          success: true,
-          token: token
-        });
+        token.save(function(err, token){
+          if (err) throw err;
+
+          res.json({
+            success: true,
+            token: token.body
+          });
+        })        
 
       }
       
     }
 
-  })
-
-  
+  })  
 
 })
+/*
+apiRoutes.use(function(req, res, next) {
 
-apiRouter.get('/users', function(req, res) {
-  User.find({}, function(err, users) {
-    res.json(users);
-  });
+  // check header or url parameters or post parameters for token
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+
+  // decode token
+  if (token) {
+
+    // verifies secret and checks exp
+    jwt.verify(token, app.get('superSecret'), function(err, decoded) {      
+      if (err) {
+        return res.json({ success: false, message: 'Failed to authenticate token.' });    
+      } else {
+        // if everything is good, save to request for use in other routes
+        req.decoded = decoded;    
+        next();
+      }
+    });
+
+  } else {
+
+    // if there is no token
+    // return an error
+    return res.status(403).send({ 
+      success: false, 
+      message: 'No token provided.' 
+    });
+    
+  }
+});
+*/
+
+apiRouter.get('/verifyToken', function(req, res) {
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+
+  if (token){
+
+    Models.Token.findOne({body: token}, function(err, t){
+      if (err) throw err;
+
+      if (t.expire < new Date().getTime() / 1000){
+        res.json({success: false, errorMessage: 'Token expired. Need authorization.'})
+      } else {
+
+        var decoded = new Buffer(t.body, 'base64').toString('utf-8');
+
+        if (decoded.split('.')[2] === app.get('tokenSecret')){
+          res.json({success: true});
+        } else {
+          res.json({success: false, errorMessage: 'Invalid token provided.'})
+        }
+      }      
+    });
+
+  } else {
+    res.json({success: false, errorMessage: 'No token provided.'})
+  }
+
 });   
 
 app.use('/api', apiRouter);
